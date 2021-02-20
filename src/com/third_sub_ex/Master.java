@@ -3,6 +3,7 @@ package com.third_sub_ex;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -12,12 +13,12 @@ public class Master {
     private SlaveThread slaveThread;
     private ClientThread clientThread;
     private boolean running = false;
-    public static int slaveConnected; // Slave connection counter
+    public static ArrayList<ClientThread> connectedClients; // Client connection List
 
     public Master(int slavePort, int clientPort) {
         this.slavePort = slavePort;
         this.clientPort = clientPort;
-        this.slaveConnected = 0; //Αρχικοποιούμε τον μετρητή για τις συνδέσεις που έχουμε με slave
+        this.connectedClients = new ArrayList<>(); //Αρχικοποιούμε τον μετρητή για τις συνδέσεις που έχουμε με slave
     }
 
     public void startServer() {
@@ -54,9 +55,6 @@ public class Master {
                     Socket slSocket = slaveSocket.accept();
                     System.out.println("Δημιουργήθηκε μια νέα σύνδεση Slave");
 
-                    // Pass the socket to the RequestHandler thread for processing
-//                    RequestHandler requestHandler = new RequestHandler(slSocket, clSocket);
-//                    requestHandler.start();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -77,19 +75,10 @@ public class Master {
             while (running) {
                 try {
                     Socket clSocket = clientSocket.accept();
-                    BufferedReader in = new BufferedReader(new InputStreamReader(clSocket.getInputStream()));
-                    System.out.println("Δημιουργήθηκε μια νέα σύνδεση Client");
 
-                    String inputLine;
-                    //Όσο έχουμε μηνύματα από τον client συνεχίζουμε
-                    while ((inputLine = in.readLine())  != null) {
-                        //Τυπώνουμε στην κονσόλα το μήνυμα που έστειλε ο client
-                        System.out.println("Client: " + inputLine);
-                    }
+                    ClientRequestHandler clientRequestHandler = new ClientRequestHandler(clSocket);
+                    clientRequestHandler.start();
 
-                    // Pass the socket to the RequestHandler thread for processing
-//                RequestHandler requestHandler = new RequestHandler( slSocket, clSocket );
-//                requestHandler.start();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -107,6 +96,48 @@ public class Master {
             e.printStackTrace();
         }
         server.stopServer();
+    }
+
+    class ClientRequestHandler extends Thread {
+        private Socket socket;
+
+        ClientRequestHandler(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try {
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                System.out.println("Δημιουργήθηκε μια νέα σύνδεση Client");
+
+                String inputLine;
+                //Όσο έχουμε μηνύματα από τον client συνεχίζουμε
+                while ((inputLine = in.readLine())  != null) {
+                    //Τυπώνουμε στην κονσόλα το μήνυμα που έστειλε ο client
+                    System.out.println("Client: " + inputLine);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    class SlaveRequestHandler extends Thread {
+        private Socket socket;
+
+        SlaveRequestHandler(Socket socket) {
+            this.socket = socket;
+        }
+
+        @Override
+        public void run() {
+            try {
+                BufferedReader incoming = new BufferedReader(new InputStreamReader((socket.getInputStream())));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 //    class RequestHandler extends Thread {
